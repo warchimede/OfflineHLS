@@ -12,20 +12,12 @@ import AVKit
 
 class ViewController: UIViewController {
 
-  override func viewDidLoad() {
-    super.viewDidLoad()
-    // Do any additional setup after loading the view, typically from a nib.
+  let downloadIdentifier = "POC-downloadIdentifier"
+  let assetPathKey = "assetPath"
 
+  @IBAction func onDownloadButtonTapped(_ sender: Any) {
     setupAssetDownload()
   }
-
-  override func didReceiveMemoryWarning() {
-    super.didReceiveMemoryWarning()
-    // Dispose of any resources that can be recreated.
-  }
-
-  let downloadIdentifier = "downloadIdentifier"
-  let assetPathKey = "assetPath"
 
   func setupAssetDownload() {
     // Create new background session configuration
@@ -38,8 +30,13 @@ class ViewController: UIViewController {
     let asset = AVURLAsset(url: url)
 
     // Create new AVAssetDownloadTask for the desired asset
-    //    let downloadTask = downloadSession.makeAssetDownloadTask(asset: asset, destinationURL: URL, options: nil) // iOS 9 only, deprecated in iOS 10+
-    let downloadTask = downloadSession.makeAssetDownloadTask(asset: asset, assetTitle: "Bipbop", assetArtworkData: nil, options: nil)
+    let downloadTask: AVAssetDownloadTask!
+    if #available(iOS 10.0, *) {
+      downloadTask = downloadSession.makeAssetDownloadTask(asset: asset, assetTitle: "Bipbop", assetArtworkData: nil, options: nil)
+    } else {
+      // Fallback on earlier versions
+      downloadTask = downloadSession.makeAssetDownloadTask(asset: asset, destinationURL: URL(fileURLWithPath: NSHomeDirectory()), options: nil) // iOS 9 only, deprecated in iOS 10+
+    }
 
     // Start task and begin download
     downloadTask?.resume()
@@ -57,17 +54,25 @@ class ViewController: UIViewController {
     let assetURL = baseURL.appendingPathComponent(assetPath)
     let asset = AVURLAsset(url: assetURL)
 
-    if let cache = asset.assetCache, cache.isPlayableOffline {
-      // Set up player item and player and begin playback
-      let item = AVPlayerItem(asset: asset)
-      let player = AVPlayer(playerItem: item)
-      let playerVC = AVPlayerViewController()
-      playerVC.player = player
-      present(playerVC, animated: true, completion: nil)
+    if #available(iOS 10.0, *) {
+      if let cache = asset.assetCache, cache.isPlayableOffline {
+        presentPlayer(using: asset)
+      } else {
+        // Present Error: No offline version of this asset available
+        print("Error: No offline version of this asset available")
+      }
     } else {
-      // Present Error: No offline version of this asset available
-      print("Error: No offline version of this asset available")
+      // Fallback on earlier versions
+      presentPlayer(using: asset)
     }
+  }
+
+  private func presentPlayer(using asset: AVAsset) {
+    // Set up player item and player and begin playback
+    let item = AVPlayerItem(asset: asset)
+    let player = AVPlayer(playerItem: item)
+    let playerVC = AVPlayerViewController()
+    playerVC.player = player
   }
 
   func deleteOfflineAsset() {
